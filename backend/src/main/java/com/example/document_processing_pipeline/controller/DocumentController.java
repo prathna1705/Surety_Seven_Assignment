@@ -1,6 +1,7 @@
 package com.example.document_processing_pipeline.controller;
 
 import com.example.document_processing_pipeline.entity.*;
+import com.example.document_processing_pipeline.dto.*;
 import com.example.document_processing_pipeline.service.DocumentService;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
@@ -16,55 +17,43 @@ public class DocumentController {
   private final DocumentService service;
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  ResponseEntity<DocumentResponse> upload(
+  ResponseEntity<DocumentResponseDto> uploadDocument(
       @RequestPart MultipartFile file,
       @RequestParam DocumentType documentType,
       @RequestParam(required = false) String metadata) {
-    Document d = service.upload(file, documentType, metadata);
-    return ResponseEntity.status(HttpStatus.CREATED).body(DocumentResponse.from(d));
+    Document document = service.uploadDocument(file, documentType, metadata);
+    ExtractionResult pdfExtractionResult = service.getExtractionResult(document.getId());
+    DocumentResponseDto response =
+        DocumentResponseDto.fromDocumentAndExtractionResult(document, pdfExtractionResult);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @GetMapping
-  DocumentPage list(
+  DocumentPageDto getAllDocuments(
       @RequestParam(required = false) DocumentStatus status,
       @RequestParam(required = false) DocumentType documentType,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size) {
     Page<Document> result =
-        service.list(
+        service.getAllDocuments(
             status,
             documentType,
             PageRequest.of(
                 page, Math.min(Math.max(size, 1), 100), Sort.by(Sort.Direction.DESC, "createdAt")));
-    return DocumentPage.from(result);
+    return DocumentPageDto.fromDocumentPage(result);
   }
 
   @GetMapping("/{id}")
-  DocumentResponse get(@PathVariable String id) {
-    return DocumentResponse.from(service.get(id));
+  DocumentResponseDto getDocumentDetails(@PathVariable String documentId) {
+    Document document = service.getDocument(documentId);
+    ExtractionResult pdfExtractionResult = service.getExtractionResult(document.getId());
+    return DocumentResponseDto.fromDocumentAndExtractionResult(document, pdfExtractionResult);
   }
 
   @GetMapping("/{id}/history")
-  List<HistoryResponse> history(@PathVariable String id) {
-    return service.history(id).stream()
-        .map(
-            h ->
-                new HistoryResponse(h.getStatus(), h.getTimestamp(), h.getReason(), h.getAttempt()))
+  List<ProcessingHistoryDto> getDocumentHistory(@PathVariable String id) {
+    return service.getDocumentHistory(id).stream()
+        .map(ProcessingHistoryDto::fromProcessingHistory)
         .toList();
-  }
-
-  record HistoryResponse(
-      DocumentStatus status, java.time.Instant timestamp, String reason, int attempt) {}
-
-  record DocumentPage(
-      List<DocumentResponse> content, int page, int size, long totalElements, int totalPages) {
-    static DocumentPage from(Page<Document> p) {
-      return new DocumentPage(
-          p.getContent().stream().map(DocumentResponse::from).toList(),
-          p.getNumber(),
-          p.getSize(),
-          p.getTotalElements(),
-          p.getTotalPages());
-    }
   }
 }

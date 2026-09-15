@@ -3,6 +3,7 @@ package com.example.document_processing_pipeline.service;
 import com.example.document_processing_pipeline.entity.*;
 import com.example.document_processing_pipeline.repository.DocumentRepository;
 import com.example.document_processing_pipeline.repository.HistoryRepository;
+import com.example.document_processing_pipeline.repository.ExtractionResultRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,39 +15,47 @@ import org.springframework.transaction.annotation.Transactional;
 class ProcessingStateService {
   private final DocumentRepository documents;
   private final HistoryRepository history;
+  private final ExtractionResultRepository extractionResults;
 
   @Transactional
-  public void begin(String documentId) {
+  public void beginProcessing(String documentId) {
     Document document = documents.findById(documentId).orElseThrow();
-    document.startAttempt();
+    document.processingStarted();
     documents.save(document);
     history.save(
         new ProcessingHistory(
-            document, DocumentStatus.PROCESSING, null, document.getProcessingAttempts()));
+            documentId, DocumentStatus.PROCESSING, null, document.getProcessingAttempts()));
     log.info(
-        "documentId={} attempt={} status=PROCESSING",
-        documentId,
-        document.getProcessingAttempts());
+        "documentId={} attempt={} status=PROCESSING", documentId, document.getProcessingAttempts());
   }
 
   @Transactional
-  public void complete(String documentId, ExtractionResult result) {
+  public void completeProcessing(String documentId, ExtractionResult result) {
     Document document = documents.findById(documentId).orElseThrow();
-    document.processed(result);
+    ExtractionResult persistedResult =
+        new ExtractionResult(
+            documentId,
+            result.getCompanyName(),
+            result.getRegistrationNumber(),
+            result.getAddress(),
+            result.getAnnualRevenue(),
+            result.getDocumentDate());
+    extractionResults.save(persistedResult);
+    document.processingCompleted();
     documents.save(document);
     history.save(
         new ProcessingHistory(
-            document, DocumentStatus.PROCESSED, null, document.getProcessingAttempts()));
+            documentId, DocumentStatus.PROCESSED, null, document.getProcessingAttempts()));
     log.info("documentId={} status=PROCESSED", documentId);
   }
 
   @Transactional
-  public void fail(String documentId, String reason, String validationErrors) {
+  public void failProcessing(String documentId, String reason, String validationErrors) {
     Document document = documents.findById(documentId).orElseThrow();
-    document.failed(reason, validationErrors);
+    document.processingFailed(reason, validationErrors);
     documents.save(document);
     history.save(
         new ProcessingHistory(
-            document, DocumentStatus.FAILED, reason, document.getProcessingAttempts()));
+            documentId, DocumentStatus.FAILED, reason, document.getProcessingAttempts()));
   }
 }

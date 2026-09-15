@@ -1,11 +1,11 @@
 package com.example.document_processing_pipeline.service;
 
-import com.example.document_processing_pipeline.entity.*;
 import com.example.document_processing_pipeline.config.DocumentProcessingProperties;
+import com.example.document_processing_pipeline.entity.*;
 import com.example.document_processing_pipeline.exceptions.ProcessingException;
 import java.util.*;
-import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -27,23 +27,25 @@ public class ProcessingWorker {
     }
     for (int attempt = 1; attempt <= processingProperties.maxAttempts(); attempt++) {
       try {
-        processingStateService.begin(id);
+        processingStateService.beginProcessing(id);
         ExtractionResult result = processor.extract(content);
         String errors = validationErrors(result);
         if (errors != null) {
-          processingStateService.fail(id, "VALIDATION_FAILED", errors);
+          processingStateService.failProcessing(id, "VALIDATION_FAILED", errors);
           return;
         }
-        processingStateService.complete(id, result);
+        processingStateService.completeProcessing(id, result);
         return;
-      } catch (ProcessingException e) {
-        log.warn("documentId={} attempt={} failed reason={}", id, attempt, e.getMessage());
-        processingStateService.fail(id, e.getMessage(), null);
-        if (!e.isRetryable() || attempt == processingProperties.maxAttempts()) return;
+      } catch (ProcessingException exception) {
+        log.warn("documentId={} attempt={} failed reason={}", id, attempt, exception.getMessage());
+        processingStateService.failProcessing(id, exception.getMessage(), null);
+        if (!exception.isRetryable() || attempt == processingProperties.maxAttempts()) {
+          return;
+        }
         waitBeforeRetry();
       } catch (Exception e) {
         log.error("documentId={} attempt={} unexpected processing failure", id, attempt, e);
-        processingStateService.fail(id, "PROCESSOR_ERROR", null);
+        processingStateService.failProcessing(id, "PROCESSOR_ERROR", null);
         return;
       }
     }
@@ -57,15 +59,22 @@ public class ProcessingWorker {
     }
   }
 
-  private String validationErrors(ExtractionResult r) {
-    List<String> e = new ArrayList<>();
-    if (r.getCompanyName() == null || r.getCompanyName().isBlank())
-      e.add("companyName is required");
-    if (r.getRegistrationNumber() == null || r.getRegistrationNumber().isBlank())
-      e.add("registrationNumber is required");
-    if (r.getAnnualRevenue() == null || r.getAnnualRevenue().signum() < 0)
-      e.add("annualRevenue must be at least 0");
-    if (r.getDocumentDate() == null) e.add("documentDate must be a valid date");
-    return e.isEmpty() ? null : String.join("; ", e);
+  private String validationErrors(ExtractionResult extractionResult) {
+    List<String> exceptions = new ArrayList<>();
+    if (extractionResult.getCompanyName() == null || extractionResult.getCompanyName().isBlank()) {
+      exceptions.add("companyName is required");
+    }
+    if (extractionResult.getRegistrationNumber() == null
+        || extractionResult.getRegistrationNumber().isBlank()) {
+      exceptions.add("registrationNumber is required");
+    }
+    if (extractionResult.getAnnualRevenue() == null
+        || extractionResult.getAnnualRevenue().signum() < 0) {
+      exceptions.add("annualRevenue must be at least 0");
+    }
+    if (extractionResult.getDocumentDate() == null) {
+      exceptions.add("documentDate must be a valid date");
+    }
+    return exceptions.isEmpty() ? null : String.join("; ", exceptions);
   }
 }

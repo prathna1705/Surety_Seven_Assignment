@@ -48,9 +48,6 @@ public class Document {
   @Column(nullable = false)
   private Instant updatedAt;
 
-  @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-  private ExtractionResult result;
-
   public Document(String filename, DocumentType type, String hash, String metadata) {
     id = "DOC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     this.filename = filename;
@@ -61,22 +58,21 @@ public class Document {
     createdAt = updatedAt = Instant.now();
   }
 
-  public void startAttempt() {
+  public void processingStarted() {
     status = DocumentStatus.PROCESSING;
     processingAttempts++;
     failureReason = null;
     updatedAt = Instant.now();
   }
 
-  public void processed(ExtractionResult value) {
+  public void processingCompleted() {
     status = DocumentStatus.PROCESSED;
-    result = value;
     failureReason = null;
     validationErrors = null;
     updatedAt = Instant.now();
   }
 
-  public void failed(String reason, String errors) {
+  public void processingFailed(String reason, String errors) {
     status = DocumentStatus.FAILED;
     failureReason = reason;
     validationErrors = errors;

@@ -14,8 +14,8 @@ public class ProcessingHistory {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @ManyToOne(optional = false)
-  private Document document;
+  @Column(name = "document_id", nullable = false)
+  private String documentId;
 
   @Enumerated(EnumType.STRING)
   private DocumentStatus status;
@@ -24,11 +24,11 @@ public class ProcessingHistory {
   private String reason;
   private int attempt;
 
-  public ProcessingHistory(Document d, DocumentStatus s, String r, int a) {
-    document = d;
-    status = s;
-    reason = r;
-    attempt = a;
+  public ProcessingHistory(String documentId, DocumentStatus status, String reason, int attempt) {
+    this.documentId = documentId;
+    this.status = status;
+    this.reason = reason;
+    this.attempt = attempt;
     timestamp = Instant.now();
   }
 }

@@ -1,4 +1,4 @@
-package com.example.document_processing_pipeline.controller;
+package com.example.document_processing_pipeline.exceptions;
 
 import java.util.*;
 import org.springframework.http.*;
