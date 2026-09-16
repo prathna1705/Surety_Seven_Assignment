@@ -9,14 +9,17 @@ import org.springframework.stereotype.Component;
 @Component
 public class MockDocumentProcessor implements DocumentProcessor {
   public ExtractionResult extract(byte[] content) {
-    String text = new String(content);
-    if (text.contains("TIMEOUT")) {
+    String fileContent = new String(content);
+    if (fileContent.contains("TIMEOUT")) {
       throw new ProcessingException("PROCESSOR_TIMEOUT", true);
     }
-    if (text.contains("ERROR")) {
+    if (fileContent.contains("ERROR")) {
       throw new ProcessingException("PROCESSOR_ERROR", true);
     }
-    if (text.contains("INVALID_RESULT")) {
+    if (fileContent.contains("CORRUPTED_DOCUMENT")) {
+      throw new ProcessingException("CORRUPTED_DOCUMENT", false);
+    }
+    if (fileContent.contains("INVALID_RESULT")) {
       return new ExtractionResult("", "", "New Delhi", new BigDecimal("-1"), null);
     }
     return new ExtractionResult(

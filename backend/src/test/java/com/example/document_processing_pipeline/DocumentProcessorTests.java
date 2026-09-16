@@ -31,4 +31,14 @@ class DocumentProcessorTests {
     assertTrue(e.isRetryable());
     assertEquals("PROCESSOR_TIMEOUT", e.getMessage());
   }
+
+  @Test
+  void reportsCorruptedDocumentAsNonRetryable() {
+    ProcessingException exception =
+        assertThrows(
+            ProcessingException.class,
+            () -> processor.extract("CORRUPTED_DOCUMENT".getBytes()));
+    assertFalse(exception.isRetryable());
+    assertEquals("CORRUPTED_DOCUMENT", exception.getMessage());
+  }
 }
