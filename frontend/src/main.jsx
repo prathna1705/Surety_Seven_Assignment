@@ -63,7 +63,6 @@ function App() {
     <main>
       <header>
         <div>
-          <p className="eyebrow">SURETYSEVEN</p>
           <h1>Document processing</h1>
           <p className="muted">Upload, validate, and track broker documents.</p>
         </div>
