@@ -40,10 +40,12 @@ class DocumentServiceTest {
     when(documentRepository.save(any(Document.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    Document uploadedDocument =
+    DocumentUploadResult uploadResult =
         documentService.uploadDocument(file, DocumentType.FINANCIAL_STATEMENT, "broker=acme");
+    Document uploadedDocument = uploadResult.getDocument();
 
     assertEquals(DocumentStatus.UPLOADED, uploadedDocument.getStatus());
+    assertFalse(uploadResult.isDuplicateUpload());
     verify(documentRepository).save(uploadedDocument);
     verify(historyRepository)
         .save(
@@ -69,9 +71,10 @@ class DocumentServiceTest {
     when(documentRepository.findByContentHash(anyString()))
         .thenReturn(Optional.of(existingDocument));
 
-    Document returnedDocument = documentService.uploadDocument(file, DocumentType.OTHER, null);
+    DocumentUploadResult uploadResult = documentService.uploadDocument(file, DocumentType.OTHER, null);
 
-    assertSame(existingDocument, returnedDocument);
+    assertSame(existingDocument, uploadResult.getDocument());
+    assertTrue(uploadResult.isDuplicateUpload());
     verify(documentRepository, never()).save(any());
     verify(historyRepository, never()).save(any());
     verifyNoInteractions(eventPublisher);

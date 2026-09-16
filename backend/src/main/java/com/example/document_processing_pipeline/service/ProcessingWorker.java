@@ -19,27 +19,33 @@ public class ProcessingWorker {
 
   @Async("documentProcessorExecutor")
   public void process(String id, byte[] content) {
+    log.info("documentId={} processingStarted", id);
     try {
       Thread.sleep(150);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      log.warn("documentId={} processingInterruptedBeforeFirstAttempt", id);
       return;
     }
     for (int attempt = 1; attempt <= processingProperties.maxAttempts(); attempt++) {
       try {
+        log.info("documentId={} attempt={} extractionStarted", id, attempt);
         processingStateService.beginProcessing(id);
         ExtractionResult result = processor.extract(content);
         String errors = validationErrors(result);
         if (errors != null) {
+          log.warn("documentId={} attempt={} processingValidationFailed validationErrors={}", id, attempt, errors);
           processingStateService.failProcessing(id, "VALIDATION_FAILED", errors);
           return;
         }
         processingStateService.completeProcessing(id, result);
+        log.info("documentId={} attempt={} processingCompleted", id, attempt);
         return;
       } catch (ProcessingException exception) {
         log.warn("documentId={} attempt={} failed reason={}", id, attempt, exception.getMessage());
         processingStateService.failProcessing(id, exception.getMessage(), null);
         if (!exception.isRetryable() || attempt == processingProperties.maxAttempts()) {
+          log.warn("documentId={} attempt={} processingStopped retryable={}", id, attempt, exception.isRetryable());
           return;
         }
         waitBeforeRetry();
@@ -56,6 +62,7 @@ public class ProcessingWorker {
       Thread.sleep(processingProperties.retryDelayMs());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      log.warn("processingRetryWaitInterrupted");
     }
   }
 

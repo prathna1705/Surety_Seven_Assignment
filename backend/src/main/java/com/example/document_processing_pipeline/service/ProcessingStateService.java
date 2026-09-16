@@ -57,5 +57,11 @@ class ProcessingStateService {
     history.save(
         new ProcessingHistory(
             documentId, DocumentStatus.FAILED, reason, document.getProcessingAttempts()));
+    log.warn(
+        "documentId={} attempt={} status=FAILED reason={} validationFailure={}",
+        documentId,
+        document.getProcessingAttempts(),
+        reason,
+        validationErrors != null);
   }
 }

@@ -6,6 +6,7 @@ import com.example.document_processing_pipeline.service.DocumentService;
 import com.example.document_processing_pipeline.service.DocumentUploadResult;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/documents")
+@Slf4j
 @RequiredArgsConstructor
 public class DocumentController {
   private final DocumentService service;
@@ -22,13 +24,19 @@ public class DocumentController {
       @RequestPart MultipartFile file,
       @RequestParam DocumentType documentType,
       @RequestParam(required = false) String metadata) {
+    log.info("filename={} documentType={} uploadRequestReceived", file.getOriginalFilename(), documentType);
     DocumentUploadResult uploadResult = service.uploadDocument(file, documentType, metadata);
     Document document = uploadResult.getDocument();
     ExtractionResult pdfExtractionResult = service.getExtractionResult(document.getId());
     DocumentResponseDto response =
         DocumentResponseDto.fromDocumentExtractionResultAndDuplicateStatus(
             document, pdfExtractionResult, uploadResult.isDuplicateUpload());
-    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    HttpStatus responseStatus = uploadResult.isDuplicateUpload() ? HttpStatus.OK : HttpStatus.CREATED;
+    log.info(
+        "documentId={} duplicateUpload={} uploadRequestCompleted",
+        document.getId(),
+        uploadResult.isDuplicateUpload());
+    return ResponseEntity.status(responseStatus).body(response);
   }
 
   @GetMapping("/getAllDocuments")
@@ -43,11 +51,19 @@ public class DocumentController {
             documentType,
             PageRequest.of(
                 page, Math.min(Math.max(size, 1), 100), Sort.by(Sort.Direction.DESC, "createdAt")));
+    log.info(
+        "statusFilter={} documentTypeFilter={} page={} size={} documentsReturned={}",
+        status,
+        documentType,
+        page,
+        size,
+        result.getNumberOfElements());
     return DocumentPageDto.fromDocumentPage(result);
   }
 
   @GetMapping("/{documentId}")
   DocumentResponseDto getDocumentDetails(@PathVariable String documentId) {
+    log.info("documentId={} documentDetailsRequested", documentId);
     Document document = service.getDocument(documentId);
     ExtractionResult pdfExtractionResult = service.getExtractionResult(document.getId());
     return DocumentResponseDto.fromDocumentAndExtractionResult(document, pdfExtractionResult);
@@ -55,8 +71,10 @@ public class DocumentController {
 
   @GetMapping("/{id}/history")
   List<ProcessingHistoryDto> getDocumentHistory(@PathVariable String id) {
-    return service.getDocumentHistory(id).stream()
+    List<ProcessingHistoryDto> processingHistory = service.getDocumentHistory(id).stream()
         .map(ProcessingHistoryDto::fromProcessingHistory)
         .toList();
+    log.info("documentId={} historyEntriesReturned={}", id, processingHistory.size());
+    return processingHistory;
   }
 }
