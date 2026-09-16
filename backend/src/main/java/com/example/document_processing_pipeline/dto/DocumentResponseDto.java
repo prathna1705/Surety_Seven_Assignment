@@ -20,9 +20,15 @@ public class DocumentResponseDto {
   private String failureReason;
   private String validationErrors;
   private ExtractionResultDto result;
+  private boolean duplicateUpload;
 
   public static DocumentResponseDto fromDocumentAndExtractionResult(
       Document document, ExtractionResult extractionResult) {
+    return fromDocumentExtractionResultAndDuplicateStatus(document, extractionResult, false);
+  }
+
+  public static DocumentResponseDto fromDocumentExtractionResultAndDuplicateStatus(
+      Document document, ExtractionResult extractionResult, boolean duplicateUpload) {
     return new DocumentResponseDto(
         document.getId(),
         document.getFilename(),
@@ -35,6 +41,7 @@ public class DocumentResponseDto {
         document.getValidationErrors(),
         extractionResult == null
             ? null
-            : ExtractionResultDto.fromExtractionResult(extractionResult));
+            : ExtractionResultDto.fromExtractionResult(extractionResult),
+        duplicateUpload);
   }
 }

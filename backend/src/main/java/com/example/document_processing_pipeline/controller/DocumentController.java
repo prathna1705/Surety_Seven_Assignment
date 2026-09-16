@@ -3,6 +3,7 @@ package com.example.document_processing_pipeline.controller;
 import com.example.document_processing_pipeline.entity.*;
 import com.example.document_processing_pipeline.dto.*;
 import com.example.document_processing_pipeline.service.DocumentService;
+import com.example.document_processing_pipeline.service.DocumentUploadResult;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -21,14 +22,16 @@ public class DocumentController {
       @RequestPart MultipartFile file,
       @RequestParam DocumentType documentType,
       @RequestParam(required = false) String metadata) {
-    Document document = service.uploadDocument(file, documentType, metadata);
+    DocumentUploadResult uploadResult = service.uploadDocument(file, documentType, metadata);
+    Document document = uploadResult.getDocument();
     ExtractionResult pdfExtractionResult = service.getExtractionResult(document.getId());
     DocumentResponseDto response =
-        DocumentResponseDto.fromDocumentAndExtractionResult(document, pdfExtractionResult);
+        DocumentResponseDto.fromDocumentExtractionResultAndDuplicateStatus(
+            document, pdfExtractionResult, uploadResult.isDuplicateUpload());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  @GetMapping
+  @GetMapping("/getAllDocuments")
   DocumentPageDto getAllDocuments(
       @RequestParam(required = false) DocumentStatus status,
       @RequestParam(required = false) DocumentType documentType,
@@ -43,7 +46,7 @@ public class DocumentController {
     return DocumentPageDto.fromDocumentPage(result);
   }
 
-  @GetMapping("/{id}")
+  @GetMapping("/{documentId}")
   DocumentResponseDto getDocumentDetails(@PathVariable String documentId) {
     Document document = service.getDocument(documentId);
     ExtractionResult pdfExtractionResult = service.getExtractionResult(document.getId());

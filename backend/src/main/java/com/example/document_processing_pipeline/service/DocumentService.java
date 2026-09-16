@@ -5,6 +5,7 @@ import com.example.document_processing_pipeline.repository.*;
 import java.security.*;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class DocumentService {
   private final DocumentRepository documents;
@@ -20,7 +22,8 @@ public class DocumentService {
   private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
-  public Document uploadDocument(MultipartFile file, DocumentType type, String metadata) {
+  public DocumentUploadResult uploadDocument(
+      MultipartFile file, DocumentType type, String metadata) {
     if (file.isEmpty()) {
       throw new IllegalArgumentException("A non-empty PDF file is required");
     }
@@ -33,13 +36,15 @@ public class DocumentService {
       String hash = sha256(file.getBytes());
       Optional<Document> duplicate = documents.findByContentHash(hash);
       if (duplicate.isPresent()) {
-        return duplicate.get();
+        Document existingDocument = duplicate.get();
+        log.info("documentId={} duplicateUpload=true", existingDocument.getId());
+        return new DocumentUploadResult(existingDocument, true);
       }
       Document doc = new Document(file.getOriginalFilename(), type, hash, metadata);
       Document newDocument = documents.save(doc);
       history.save(new ProcessingHistory(newDocument.getId(), DocumentStatus.UPLOADED, null, 0));
       eventPublisher.publishEvent(new DocumentUploadedEvent(newDocument.getId(), file.getBytes()));
-      return doc;
+      return new DocumentUploadResult(doc, false);
     } catch (Exception e) {
       if (e instanceof IllegalArgumentException) {
         throw (IllegalArgumentException) e;
