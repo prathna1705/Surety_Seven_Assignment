@@ -16,7 +16,11 @@ function App() {
     [status, setStatus] = useState(""),
     [type, setType] = useState(""),
     [currentPage, setCurrentPage] = useState(0),
-    [pagination, setPagination] = useState({ page: 0, totalPages: 0, totalElements: 0 }),
+    [pagination, setPagination] = useState({
+      page: 0,
+      totalPages: 0,
+      totalElements: 0,
+    }),
     [selected, setSelected] = useState(null),
     [history, setHistory] = useState([]),
     [loading, setLoading] = useState(true),
@@ -31,11 +35,11 @@ function App() {
       if (type) q.set("documentType", type);
       q.set("page", currentPage);
       q.set("size", "10");
-      let r = await fetch(`${DOCUMENT_LIST_API}?${q}`);
-      if (!r.ok) {
+      let response = await fetch(`${DOCUMENT_LIST_API}?${q}`);
+      if (!response.ok) {
         throw new Error("Unable to retrieve documents");
       }
-      let d = await r.json();
+      let d = await response.json();
       setDocs(Array.isArray(d.content) ? d.content : []);
       setPagination({
         page: d.page ?? currentPage,
@@ -43,7 +47,8 @@ function App() {
         totalElements: d.totalElements ?? 0,
       });
       setMessage((currentMessage) =>
-        currentMessage === "Unable to load documents. Check that the API is running."
+        currentMessage ===
+        "Unable to load documents. Check that the API is running."
           ? ""
           : currentMessage,
       );
@@ -93,13 +98,19 @@ function App() {
       {message && <div className="notice">{message}</div>}
       <section className="toolbar">
         <h2>Documents</h2>
-        <select value={status} onChange={(e) => updateStatusFilter(e.target.value)}>
+        <select
+          value={status}
+          onChange={(e) => updateStatusFilter(e.target.value)}
+        >
           <option value="">All statuses</option>
           {["UPLOADED", "PROCESSING", "PROCESSED", "FAILED"].map((x) => (
             <option key={x}>{x}</option>
           ))}
         </select>
-        <select value={type} onChange={(e) => updateDocumentTypeFilter(e.target.value)}>
+        <select
+          value={type}
+          onChange={(e) => updateDocumentTypeFilter(e.target.value)}
+        >
           <option value="">All types</option>
           {types.map((x) => (
             <option key={x}>{x}</option>
@@ -131,7 +142,9 @@ function App() {
                   </td>
                   <td>{document.documentId}</td>
                   <td>{document.documentType.replace("_", " ")}</td>
-                  <td><Status value={document.status} /></td>
+                  <td>
+                    <Status value={document.status} />
+                  </td>
                   <td>{new Date(document.createdAt).toLocaleString()}</td>
                   <td>
                     <button
@@ -151,7 +164,8 @@ function App() {
       {pagination.totalElements > 0 && (
         <nav className="pagination" aria-label="Document list pagination">
           <span>
-            Page {pagination.page + 1} of {pagination.totalPages} · {pagination.totalElements} documents
+            Page {pagination.page + 1} of {pagination.totalPages} ·{" "}
+            {pagination.totalElements} documents
           </span>
           <div>
             <button
@@ -193,8 +207,8 @@ function Upload({ onDone }) {
     f.append("file", file);
     f.append("documentType", type);
     try {
-      let r = await fetch(DOCUMENT_API, { method: "POST", body: f });
-      let body = await r.json();
+      let response = await fetch(DOCUMENT_API, { method: "POST", body: f });
+      let body = await response.json();
       onDone(
         r.ok
           ? body.duplicateUpload
