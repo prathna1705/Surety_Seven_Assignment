@@ -11,7 +11,7 @@ body {
     sans-serif;
 }
 main {
-  max-width: 1120px;
+  max-width: 1440px;
   margin: auto;
   padding: 48px 24px;
 }
@@ -84,27 +84,48 @@ form button {
 .toolbar h2 {
   margin-right: auto;
 }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
-  gap: 14px;
-}
-.card {
-  text-align: left;
-  padding: 18px;
+.table-container {
+  overflow-x: auto;
   border: 1px solid #e1e6ef;
   border-radius: 12px;
   background: #fff;
-  transition: 0.15s;
 }
-.card:hover {
-  border-color: #7381df;
-  transform: translateY(-1px);
+table {
+  width: 100%;
+  min-width: 850px;
+  border-collapse: collapse;
 }
-.card h3 {
+th,
+td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e8ebf2;
+  text-align: left;
   white-space: nowrap;
+}
+th {
+  background: #f8f9fc;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+tbody tr:hover {
+  background: #f8faff;
+}
+.filename-cell {
+  max-width: 310px;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 700;
+}
+.details-button {
+  border-color: #cfd6f6;
+  color: #3147bf;
+  font-weight: 700;
 }
 .status {
   display: inline-block;
@@ -200,6 +221,21 @@ dt {
   padding: 10px 0;
   border-bottom: 1px solid #eef0f4;
 }
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  color: #667085;
+}
+.pagination div {
+  display: flex;
+  gap: 8px;
+}
+.pagination button {
+  font-weight: 600;
+}
 @media (max-width: 750px) {
   header {
     display: block;
@@ -213,5 +249,9 @@ dt {
   }
   .toolbar h2 {
     width: 100%;
+  }
+  .pagination {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

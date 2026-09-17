@@ -15,6 +15,8 @@ function App() {
   const [docs, setDocs] = useState([]),
     [status, setStatus] = useState(""),
     [type, setType] = useState(""),
+    [currentPage, setCurrentPage] = useState(0),
+    [pagination, setPagination] = useState({ page: 0, totalPages: 0, totalElements: 0 }),
     [selected, setSelected] = useState(null),
     [history, setHistory] = useState([]),
     [loading, setLoading] = useState(true),
@@ -27,12 +29,19 @@ function App() {
       let q = new URLSearchParams();
       if (status) q.set("status", status);
       if (type) q.set("documentType", type);
+      q.set("page", currentPage);
+      q.set("size", "10");
       let r = await fetch(`${DOCUMENT_LIST_API}?${q}`);
       if (!r.ok) {
         throw new Error("Unable to retrieve documents");
       }
       let d = await r.json();
       setDocs(Array.isArray(d.content) ? d.content : []);
+      setPagination({
+        page: d.page ?? currentPage,
+        totalPages: d.totalPages ?? 0,
+        totalElements: d.totalElements ?? 0,
+      });
       setMessage((currentMessage) =>
         currentMessage === "Unable to load documents. Check that the API is running."
           ? ""
@@ -50,7 +59,15 @@ function App() {
     load();
     const i = setInterval(() => load(false), 2500);
     return () => clearInterval(i);
-  }, [status, type]);
+  }, [status, type, currentPage]);
+  const updateStatusFilter = (newStatus) => {
+    setStatus(newStatus);
+    setCurrentPage(0);
+  };
+  const updateDocumentTypeFilter = (newDocumentType) => {
+    setType(newDocumentType);
+    setCurrentPage(0);
+  };
   const open = async (id) => {
     let [d, h] = await Promise.all([
       fetch(`${DOCUMENT_API}/${id}`).then((x) => x.json()),
@@ -76,13 +93,13 @@ function App() {
       {message && <div className="notice">{message}</div>}
       <section className="toolbar">
         <h2>Documents</h2>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+        <select value={status} onChange={(e) => updateStatusFilter(e.target.value)}>
           <option value="">All statuses</option>
           {["UPLOADED", "PROCESSING", "PROCESSED", "FAILED"].map((x) => (
             <option key={x}>{x}</option>
           ))}
         </select>
-        <select value={type} onChange={(e) => setType(e.target.value)}>
+        <select value={type} onChange={(e) => updateDocumentTypeFilter(e.target.value)}>
           <option value="">All types</option>
           {types.map((x) => (
             <option key={x}>{x}</option>
@@ -94,22 +111,65 @@ function App() {
       ) : docs.length === 0 ? (
         <div className="empty">No documents match these filters.</div>
       ) : (
-        <section className="grid">
-          {docs.map((d) => (
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Document ID</th>
+                <th>Document type</th>
+                <th>Status</th>
+                <th>Uploaded</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {docs.map((document) => (
+                <tr key={document.documentId}>
+                  <td className="filename-cell" title={document.filename}>
+                    {document.filename}
+                  </td>
+                  <td>{document.documentId}</td>
+                  <td>{document.documentType.replace("_", " ")}</td>
+                  <td><Status value={document.status} /></td>
+                  <td>{new Date(document.createdAt).toLocaleString()}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="details-button"
+                      onClick={() => open(document.documentId)}
+                    >
+                      View details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {pagination.totalElements > 0 && (
+        <nav className="pagination" aria-label="Document list pagination">
+          <span>
+            Page {pagination.page + 1} of {pagination.totalPages} · {pagination.totalElements} documents
+          </span>
+          <div>
             <button
-              className="card"
-              key={d.documentId}
-              onClick={() => open(d.documentId)}
+              type="button"
+              onClick={() => setCurrentPage((page) => page - 1)}
+              disabled={loading || pagination.page === 0}
             >
-              <Status value={d.status} />
-              <h3>{d.filename}</h3>
-              <p>
-                {d.documentId} · {d.documentType.replace("_", " ")}
-              </p>
-              <small>Uploaded {new Date(d.createdAt).toLocaleString()}</small>
+              Previous
             </button>
-          ))}
-        </section>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => page + 1)}
+              disabled={loading || pagination.page >= pagination.totalPages - 1}
+            >
+              Next
+            </button>
+          </div>
+        </nav>
       )}
       {selected && (
         <Detail
